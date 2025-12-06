@@ -95,15 +95,11 @@
     <script src="script.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            window.alert('Service Worker is supported');
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./service-worker.js')
                     .then(reg => console.log('Service Worker registered'))
                     .catch(err => console.log('Service Worker registration failed: ', err));
             });
-        }
-        else {
-            window.alert('Service Worker is not supported');
         }
     </script>
 </body>
