@@ -21,7 +21,7 @@ const watchlistChips = document.getElementById('watchlist-chips');
 const notificationBtn = document.getElementById('notification-btn');
 
 // State
-let apiKey = localStorage.getItem('alpha_vantage_key') || '';
+let apiKey = localStorage.getItem('alpha_vantage_key') || 'GEI8PUTUFSLRR8B3';
 let watchlist = JSON.parse(localStorage.getItem('stock_watchlist') || '[]');
 let notificationsEnabled = false;
 let pollingInterval = null;
