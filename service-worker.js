@@ -9,13 +9,11 @@ const ASSETS_TO_CACHE = [
 ];
 
 // Install Event
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => {
-                return cache.addAll(ASSETS_TO_CACHE);
-            })
-    );
+self.addEventListener('install', event => {
+    event.waitUntil((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        cache.addAll(ASSETS_TO_CACHE);
+    })());
 });
 
 // Fetch Event
