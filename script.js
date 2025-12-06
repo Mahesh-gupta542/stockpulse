@@ -1,0 +1,374 @@
+const API_BASE_URL = 'https://www.alphavantage.co/query';
+
+// DOM Elements
+const searchBtn = document.getElementById('search-btn');
+const tickerInput = document.getElementById('ticker-input');
+const resultsSection = document.getElementById('results-section');
+const newsGrid = document.getElementById('news-grid');
+const loading = document.getElementById('loading');
+const errorMsg = document.getElementById('error-msg');
+const settingsBtn = document.getElementById('settings-btn');
+const settingsModal = document.getElementById('settings-modal');
+const closeModal = document.getElementById('close-modal');
+const saveKeyBtn = document.getElementById('save-key-btn');
+const apiKeyInput = document.getElementById('api-key');
+
+// Watchlist Elements
+const watchlistSection = document.getElementById('watchlist-section');
+const watchlistInput = document.getElementById('watchlist-input');
+const addWatchlistBtn = document.getElementById('add-watchlist-btn');
+const watchlistChips = document.getElementById('watchlist-chips');
+const notificationBtn = document.getElementById('notification-btn');
+
+// State
+let apiKey = localStorage.getItem('alpha_vantage_key') || '';
+let watchlist = JSON.parse(localStorage.getItem('stock_watchlist') || '[]');
+let notificationsEnabled = false;
+let pollingInterval = null;
+let notifiedNewsIds = new Set(); // To prevent duplicate notifications
+
+// Initialize
+if (!apiKey) {
+    settingsModal.classList.remove('hidden');
+} else {
+    apiKeyInput.value = apiKey;
+}
+
+renderWatchlist();
+checkNotificationPermission();
+
+// Event Listeners
+searchBtn.addEventListener('click', handleSearch);
+tickerInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleSearch();
+});
+
+settingsBtn.addEventListener('click', () => {
+    settingsModal.classList.remove('hidden');
+});
+
+closeModal.addEventListener('click', () => {
+    settingsModal.classList.add('hidden');
+});
+
+saveKeyBtn.addEventListener('click', () => {
+    const key = apiKeyInput.value.trim();
+    if (key) {
+        apiKey = key;
+        localStorage.setItem('alpha_vantage_key', key);
+        settingsModal.classList.add('hidden');
+        alert('API Key saved!');
+    }
+});
+
+// Watchlist Events
+addWatchlistBtn.addEventListener('click', addToWatchlist);
+watchlistInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') addToWatchlist();
+});
+
+notificationBtn.addEventListener('click', toggleNotifications);
+
+// Watchlist Logic
+function addToWatchlist() {
+    const ticker = watchlistInput.value.trim().toUpperCase();
+    if (!ticker) return;
+
+    if (watchlist.includes(ticker)) {
+        alert('Ticker already in watchlist');
+        return;
+    }
+
+    watchlist.push(ticker);
+    saveWatchlist();
+    renderWatchlist();
+    watchlistInput.value = '';
+}
+
+function removeFromWatchlist(ticker) {
+    watchlist = watchlist.filter(t => t !== ticker);
+    saveWatchlist();
+    renderWatchlist();
+}
+
+function saveWatchlist() {
+    localStorage.setItem('stock_watchlist', JSON.stringify(watchlist));
+}
+
+function renderWatchlist() {
+    watchlistChips.innerHTML = '';
+    watchlist.forEach(ticker => {
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.innerHTML = `
+            ${ticker}
+            <span class="remove" onclick="removeFromWatchlist('${ticker}')">&times;</span>
+        `;
+        watchlistChips.appendChild(chip);
+    });
+}
+
+// Notification Logic
+function checkNotificationPermission() {
+    if (Notification.permission === 'granted') {
+        notificationsEnabled = true;
+        updateNotificationBtn();
+        startPolling();
+    }
+}
+
+async function toggleNotifications() {
+    if (notificationsEnabled) {
+        // Disable
+        notificationsEnabled = false;
+        stopPolling();
+        updateNotificationBtn();
+    } else {
+        // Enable
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            notificationsEnabled = true;
+            startPolling();
+            new Notification('Stock News Insider', { body: 'Notifications enabled! We will watch the market for you.' });
+        }
+        updateNotificationBtn();
+    }
+}
+
+function updateNotificationBtn() {
+    if (notificationsEnabled) {
+        notificationBtn.classList.add('active');
+        notificationBtn.innerHTML = '<span class="icon">🔕</span> Disable Alerts';
+    } else {
+        notificationBtn.classList.remove('active');
+        notificationBtn.innerHTML = '<span class="icon">🔔</span> Enable Alerts';
+    }
+}
+
+function startPolling() {
+    if (pollingInterval) clearInterval(pollingInterval);
+    // Poll every 15 minutes to respect API limits (500 requests/day free tier usually)
+    // But for demo purposes, let's say 60 seconds if user has key. 
+    // Realistically, we should be careful. Let's do 5 minutes.
+    checkWatchlistNews(); // Initial check
+    pollingInterval = setInterval(checkWatchlistNews, 5 * 60 * 1000);
+}
+
+function stopPolling() {
+    if (pollingInterval) clearInterval(pollingInterval);
+    pollingInterval = null;
+}
+
+async function checkWatchlistNews() {
+    if (watchlist.length === 0 || !apiKey) return;
+
+    // Alpha Vantage allows comma separated tickers
+    const tickers = watchlist.join(',');
+    const url = `${API_BASE_URL}?function=NEWS_SENTIMENT&tickers=${tickers}&apikey=${apiKey}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.feed) {
+            processNewsForNotifications(data.feed);
+        }
+    } catch (error) {
+        console.error('Polling error:', error);
+    }
+}
+
+function processNewsForNotifications(feed) {
+    // Filter for positive news on watched tickers
+    const relevantNews = feed.filter(item => {
+        // Check if we already notified this item
+        // Use URL or Title as ID if no ID provided
+        const id = item.url;
+        if (notifiedNewsIds.has(id)) return false;
+
+        // Check sentiment
+        const isPositive = item.overall_sentiment_score >= 0.15;
+
+        // Double check it matches a watchlist ticker (API might return related news)
+        const matchesWatchlist = item.ticker_sentiment.some(t => watchlist.includes(t.ticker));
+
+        return isPositive && matchesWatchlist;
+    });
+
+    relevantNews.forEach(item => {
+        sendNotification(item);
+        notifiedNewsIds.add(item.url);
+    });
+}
+
+function sendNotification(item) {
+    const notif = new Notification(`Bullish News: ${item.title}`, {
+        body: item.summary,
+        icon: '/favicon.ico' // Placeholder
+    });
+
+    notif.onclick = () => {
+        window.open(item.url, '_blank');
+    };
+}
+
+// Main Search Logic (Existing)
+async function handleSearch() {
+    const ticker = tickerInput.value.trim().toUpperCase();
+    if (!ticker) return;
+    if (!apiKey) {
+        settingsModal.classList.remove('hidden');
+        return;
+    }
+
+    // Reset UI
+    resultsSection.classList.remove('hidden');
+    newsGrid.innerHTML = '';
+    loading.classList.remove('hidden');
+    errorMsg.classList.add('hidden');
+
+    try {
+        // Fetch News and Price History in parallel
+        const [newsFeed, priceHistory] = await Promise.all([
+            fetchStockNews(ticker),
+            fetchStockHistory(ticker)
+        ]);
+
+        displayNews(newsFeed, priceHistory);
+    } catch (err) {
+        showError(err.message);
+    } finally {
+        loading.classList.add('hidden');
+    }
+}
+
+async function fetchStockNews(ticker) {
+    const url = `${API_BASE_URL}?function=NEWS_SENTIMENT&tickers=${ticker}&apikey=${apiKey}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data['Note']) {
+            throw new Error('API limit reached. Please wait or use a premium key.');
+        }
+        if (data['Error Message']) {
+            throw new Error('Invalid ticker or API key.');
+        }
+        if (!data.feed) {
+            throw new Error('No news found for this ticker.');
+        }
+
+        return data.feed;
+    } catch (error) {
+        console.error('Fetch error:', error);
+        throw error;
+    }
+}
+
+async function fetchStockHistory(ticker) {
+    const url = `${API_BASE_URL}?function=TIME_SERIES_DAILY&symbol=${ticker}&apikey=${apiKey}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        // It's okay if history fails (e.g. rate limit), we just won't show impact
+        if (data['Time Series (Daily)']) {
+            return data['Time Series (Daily)'];
+        }
+        return null;
+    } catch (error) {
+        console.warn('History fetch error:', error);
+        return null;
+    }
+}
+
+function displayNews(feed, priceHistory) {
+    // Filter for positive sentiment (Bullish)
+    const positiveNews = feed.filter(item => {
+        const tickerSentiment = item.ticker_sentiment.find(t => t.ticker === tickerInput.value.trim().toUpperCase());
+        const score = tickerSentiment ? parseFloat(tickerSentiment.ticker_sentiment_score) : parseFloat(item.overall_sentiment_score);
+        return score >= 0.15;
+    });
+
+    if (positiveNews.length === 0) {
+        showError('No positive market-moving news found recently.');
+        return;
+    }
+
+    positiveNews.forEach(item => {
+        const card = createNewsCard(item, priceHistory);
+        newsGrid.appendChild(card);
+    });
+}
+
+function createNewsCard(item, priceHistory) {
+    const div = document.createElement('div');
+    div.className = 'news-card';
+
+    // Determine sentiment label
+    const score = parseFloat(item.overall_sentiment_score);
+    let sentimentLabel = 'Bullish';
+    let sentimentClass = 'bullish';
+
+    if (score > 0.35) sentimentLabel = 'Very Bullish';
+
+    // Format Date
+    const dateStr = item.time_published;
+    const dateObj = new Date(
+        dateStr.slice(0, 4),
+        dateStr.slice(4, 6) - 1,
+        dateStr.slice(6, 8),
+        dateStr.slice(9, 11),
+        dateStr.slice(11, 13)
+    );
+    const formattedDate = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    // Calculate Price Impact
+    let impactHtml = '';
+    if (priceHistory) {
+        // Format date as YYYY-MM-DD for Alpha Vantage lookup
+        const dateKey = dateStr.slice(0, 4) + '-' + dateStr.slice(4, 6) + '-' + dateStr.slice(6, 8);
+        const dayData = priceHistory[dateKey];
+
+        if (dayData) {
+            const open = parseFloat(dayData['1. open']);
+            const close = parseFloat(dayData['4. close']);
+            const change = ((close - open) / open) * 100;
+            const sign = change >= 0 ? '+' : '';
+            const impactClass = change >= 0 ? 'positive' : 'negative';
+
+            impactHtml = `<span class="impact-badge ${impactClass}">Impact: ${sign}${change.toFixed(2)}%</span>`;
+        }
+    }
+
+    div.innerHTML = `
+        <div>
+            <div class="card-header">
+                <span class="source">${item.source}</span>
+                <div class="badges">
+                    ${impactHtml}
+                    <span class="sentiment-badge ${sentimentClass}">${sentimentLabel}</span>
+                </div>
+            </div>
+            <h3>${item.title}</h3>
+            <p>${item.summary}</p>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
+            <span style="font-size: 0.8rem; color: #666;">${formattedDate}</span>
+            <a href="${item.url}" target="_blank" class="read-more">
+                Read Analysis <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+            </a>
+        </div>
+    `;
+    return div;
+}
+
+function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.classList.remove('hidden');
+}
+
+// Expose removeFromWatchlist to global scope for onclick
+window.removeFromWatchlist = removeFromWatchlist;
