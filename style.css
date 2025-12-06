@@ -400,6 +400,21 @@ main {
     .news-grid {
         grid-template-columns: 1fr;
     }
+
+    /* Optimize Search Bar for Mobile */
+    .search-container {
+        padding: 0.25rem;
+    }
+
+    #ticker-input {
+        padding: 0.8rem 0.8rem;
+        font-size: 1rem;
+    }
+
+    #search-btn {
+        padding: 0.8rem 1rem;
+        font-size: 0.9rem;
+    }
 }
 
 /* Watchlist Section */

@@ -33,7 +33,7 @@
         <main>
             <section id="search-section">
                 <div class="search-box">
-                    <input type="text" id="ticker-input" placeholder="Enter Stock Ticker (e.g. AAPL, TSLA)">
+                    <input type="text" id="ticker-input" placeholder="Enter Ticker (e.g. AAPL)">
                     <button id="search-btn">Find News</button>
                 </div>
             </section>
@@ -101,6 +101,9 @@
                     .then(reg => console.log('Service Worker registered'))
                     .catch(err => console.log('Service Worker registration failed: ', err));
             });
+        }
+        else {
+            window.alert('Service Worker is not supported');
         }
     </script>
 </body>
