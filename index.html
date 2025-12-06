@@ -95,6 +95,7 @@
     <script src="script.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
+            window.alert('Service Worker is supported');
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./service-worker.js')
                     .then(reg => console.log('Service Worker registered'))
