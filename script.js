@@ -370,5 +370,102 @@ function showError(msg) {
     errorMsg.classList.remove('hidden');
 }
 
+// Tab Switching Logic
+const tabs = document.querySelectorAll('.tab-btn');
+const tabContents = document.querySelectorAll('.tab-content');
+const activeTickersList = document.getElementById('active-tickers-list');
+let topTickersLoaded = false;
+
+tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        // Remove active class from all tabs
+        tabs.forEach(t => t.classList.remove('active'));
+        // Add active class to clicked tab
+        tab.classList.add('active');
+
+        // Hide all contents
+        tabContents.forEach(content => content.classList.add('hidden'));
+
+        // Show target content
+        const targetId = tab.dataset.tab;
+        document.getElementById(targetId).classList.remove('hidden');
+
+        // Load data if switching to active tickers tab
+        if (targetId === 'active-tickers-section' && !topTickersLoaded) {
+            fetchTopActiveTickers();
+        }
+    });
+});
+
+async function fetchTopActiveTickers() {
+    if (!apiKey) {
+        activeTickersList.innerHTML = '<div class="error-msg">Please save your API key in settings first.</div>';
+        return;
+    }
+
+    activeTickersList.innerHTML = '<div class="loading-placeholder">Loading top Volume tickers...</div>';
+
+    const url = `${API_BASE_URL}?function=TOP_GAINERS_LOSERS&apikey=${apiKey}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data['Information']) {
+            // Rate limit or other info
+            throw new Error(data['Information']);
+        }
+        if (!data.most_actively_traded) {
+            throw new Error('No data returned from API.');
+        }
+
+        const top10 = data.most_actively_traded.slice(0, 10);
+        renderActiveTickers(top10);
+        topTickersLoaded = true;
+
+    } catch (error) {
+        console.error('Error fetching top tickers:', error);
+        activeTickersList.innerHTML = `<div class="error-msg">Error: ${error.message || 'Failed to load data'}</div>`;
+    }
+}
+
+function renderActiveTickers(tickers) {
+    activeTickersList.innerHTML = '';
+
+    tickers.forEach(t => {
+        const ticker = t.ticker;
+        const price = parseFloat(t.price).toFixed(2);
+        const change = parseFloat(t.change_percentage);
+        const volume = parseInt(t.volume).toLocaleString();
+
+        const changeClass = change >= 0 ? 'positive' : 'negative';
+        const changeSign = change >= 0 ? '+' : '';
+
+        const div = document.createElement('div');
+        div.className = 'ticker-item';
+        div.innerHTML = `
+            <div class="ticker-info">
+                <span class="ticker-symbol">${ticker}</span>
+                <span class="ticker-price">$${price}</span>
+            </div>
+            <div class="ticker-info">
+                <span class="ticker-change ${changeClass}">${changeSign}${change}%</span>
+                <span class="ticker-volume">Vol: ${volume}</span>
+            </div>
+        `;
+
+        // Add click event to search this ticker
+        div.style.cursor = 'pointer';
+        div.addEventListener('click', () => {
+            // Switch to search tab
+            document.querySelector('[data-tab="search-section"]').click();
+            tickerInput.value = ticker;
+            handleSearch();
+        });
+
+        activeTickersList.appendChild(div);
+    });
+}
+
 // Expose removeFromWatchlist to global scope for onclick
 window.removeFromWatchlist = removeFromWatchlist;

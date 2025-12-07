@@ -32,15 +32,33 @@
         </header>
 
         <main>
-            <section id="search-section">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="search-section">News Search</button>
+                <button class="tab-btn" data-tab="active-tickers-section">Trending Tickers</button>
+                <button class="tab-btn" data-tab="watchlist-section">My Watchlist</button>
+            </div>
+
+            <section id="search-section" class="tab-content active">
                 <div class="search-box">
                     <input type="text" id="ticker-input" placeholder="Enter Ticker (e.g. AAPL)">
                     <button id="search-btn">Find News</button>
                 </div>
             </section>
 
+            <!-- Active Tickers Section -->
+            <section id="active-tickers-section" class="tab-content hidden">
+                <div class="section-header">
+                    <h2>Top 10 Most Active Tickers (Volume)</h2>
+                    <span class="badge live">● LIVE</span>
+                </div>
+                <div id="active-tickers-list" class="tickers-list">
+                    <!-- Tickers will be injected here -->
+                    <div class="loading-placeholder">Loading market data...</div>
+                </div>
+            </section>
+
             <!-- Watchlist Section -->
-            <section id="watchlist-section">
+            <section id="watchlist-section" class="tab-content hidden">
                 <div class="section-header">
                     <h2>My Watchlist</h2>
                     <button id="notification-btn" class="secondary-btn">
