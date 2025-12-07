@@ -111,10 +111,55 @@
         </div>
     </div>
 
+    <!-- Update Toast -->
+    <div id="update-toast">
+        <p>New version available!</p>
+        <button id="reload-btn">Reload</button>
+        <button id="dismiss-toast" aria-label="Dismiss">&times;</button>
+    </div>
+
     <script src="script.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./service-worker.js', { scope: './' });
+            navigator.serviceWorker.register('./service-worker.js', { scope: './' }).then(registration => {
+
+                // Check if there's already a waiting worker (e.g. from previous load)
+                if (registration.waiting) {
+                    showUpdateToast(registration.waiting);
+                }
+
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // New version installed and we have an active controller (update)
+                            showUpdateToast(newWorker);
+                        }
+                    });
+                });
+            });
+
+            let newWorker;
+            function showUpdateToast(worker) {
+                newWorker = worker;
+                const toast = document.getElementById('update-toast');
+                toast.classList.add('show');
+            }
+
+            document.getElementById('reload-btn').addEventListener('click', () => {
+                if (newWorker) {
+                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                }
+            });
+
+            document.getElementById('dismiss-toast').addEventListener('click', () => {
+                document.getElementById('update-toast').classList.remove('show');
+            });
+
+            // Reload page when new worker takes control
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                window.location.reload();
+            });
         }
     </script>
 </body>

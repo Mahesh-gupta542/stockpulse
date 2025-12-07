@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stock-news-v1';
+const CACHE_NAME = 'stock-news-v2';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -40,4 +40,11 @@ self.addEventListener('activate', (event) => {
             );
         })
     );
+});
+
+// Listen for skipWaiting message (for update flow)
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
 });
