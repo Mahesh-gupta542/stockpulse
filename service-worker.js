@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stock-news-v2';
+const CACHE_NAME = 'stock-news-v3';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
