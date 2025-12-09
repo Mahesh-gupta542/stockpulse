@@ -3,7 +3,7 @@ const API_BASE_URL = 'https://www.alphavantage.co/query';
 // DOM Elements
 const searchBtn = document.getElementById('search-btn');
 const tickerInput = document.getElementById('ticker-input');
-const resultsSection = document.getElementById('results-section');
+const resultsSection = document.getElementById('results-header');
 const newsGrid = document.getElementById('news-grid');
 const loading = document.getElementById('loading');
 const errorMsg = document.getElementById('error-msg');
@@ -243,7 +243,10 @@ async function handleSearch() {
 }
 
 async function fetchStockNews(ticker) {
-    const url = `${API_BASE_URL}?function=NEWS_SENTIMENT&tickers=${ticker}&apikey=${apiKey}`;
+    const fromDate = new Date();
+    fromDate.setMonth(fromDate.getMonth() - 12);
+
+    const url = `${API_BASE_URL}?function=NEWS_SENTIMENT&tickers=${ticker}&time_from=${formatToYYYYMMDDHHMMSS(fromDate)}&apikey=${apiKey}`;
 
     try {
         const response = await fetch(url);
@@ -374,6 +377,7 @@ function showError(msg) {
 const tabs = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 const activeTickersList = document.getElementById('active-tickers-list');
+const refreshTickersBtn = document.getElementById('refresh-tickers-btn');
 let topTickersLoaded = false;
 
 tabs.forEach(tab => {
@@ -397,13 +401,24 @@ tabs.forEach(tab => {
     });
 });
 
-async function fetchTopActiveTickers() {
+if (refreshTickersBtn) {
+    refreshTickersBtn.addEventListener('click', () => {
+        refreshTickersBtn.classList.add('spinning');
+        fetchTopActiveTickers(true).finally(() => {
+            refreshTickersBtn.classList.remove('spinning');
+        });
+    });
+}
+
+async function fetchTopActiveTickers(isRefresh = false) {
     if (!apiKey) {
         activeTickersList.innerHTML = '<div class="error-msg">Please save your API key in settings first.</div>';
         return;
     }
 
-    activeTickersList.innerHTML = '<div class="loading-placeholder">Loading top Volume tickers...</div>';
+    if (!isRefresh) {
+        activeTickersList.innerHTML = '<div class="loading-placeholder">Loading top Volume tickers...</div>';
+    }
 
     const url = `${API_BASE_URL}?function=TOP_GAINERS_LOSERS&apikey=${apiKey}`;
 
@@ -425,7 +440,11 @@ async function fetchTopActiveTickers() {
 
     } catch (error) {
         console.error('Error fetching top tickers:', error);
-        activeTickersList.innerHTML = `<div class="error-msg">Error: ${error.message || 'Failed to load data'}</div>`;
+        if (!isRefresh) { // Keep old data if refresh fails, or show error? Let's show error for now
+            activeTickersList.innerHTML = `<div class="error-msg">Error: ${error.message || 'Failed to load data'}</div>`;
+        } else {
+            alert(`Failed to refresh: ${error.message}`);
+        }
     }
 }
 
@@ -465,6 +484,16 @@ function renderActiveTickers(tickers) {
 
         activeTickersList.appendChild(div);
     });
+}
+
+function formatToYYYYMMDDHHMMSS(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    return `${year}${month}${day}T${hours}${minutes}`;
 }
 
 // Expose removeFromWatchlist to global scope for onclick
