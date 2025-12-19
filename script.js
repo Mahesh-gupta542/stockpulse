@@ -230,15 +230,51 @@ async function handleSearch() {
     errorMsg.classList.add('hidden');
 
     try {
-        // Fetch News, Price History, and Analyst Ratings in parallel
-        const [newsFeed, priceHistory, overview] = await Promise.all([
-            fetchStockNews(ticker),
-            fetchStockHistory(ticker),
-            fetchCompanyOverview(ticker)
-        ]);
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-        displayNews(newsFeed, priceHistory);
-        displayAnalystRatings(overview);
+        // Sequentially fetch data with delays to avoid API rate limits
+        let newsResult = { status: 'rejected', reason: null };
+        try {
+            const val = await fetchStockNews(ticker);
+            newsResult = { status: 'fulfilled', value: val };
+        } catch (e) { newsResult = { status: 'rejected', reason: e }; }
+
+        await delay(1000);
+
+        let historyResult = { status: 'rejected', reason: null };
+        try {
+            const val = await fetchStockHistory(ticker);
+            historyResult = { status: 'fulfilled', value: val };
+        } catch (e) { historyResult = { status: 'rejected', reason: e }; }
+
+        await delay(1000);
+
+        let overviewResult = { status: 'rejected', reason: null };
+        try {
+            const val = await fetchCompanyOverview(ticker);
+            overviewResult = { status: 'fulfilled', value: val };
+        } catch (e) { overviewResult = { status: 'rejected', reason: e }; }
+
+        // Display Ratings (independent of news success)
+        if (overviewResult.status === 'fulfilled') {
+            let currentPrice = null;
+            // Try to get latest price from history if available
+            if (historyResult.status === 'fulfilled' && historyResult.value) {
+                const dates = Object.keys(historyResult.value);
+                if (dates.length > 0) {
+                    currentPrice = historyResult.value[dates[0]]['4. close'];
+                }
+            }
+            displayAnalystRatings(overviewResult.value, currentPrice);
+        }
+
+        // Display News
+        if (newsResult.status === 'fulfilled') {
+            const priceHistory = historyResult.status === 'fulfilled' ? historyResult.value : null;
+            displayNews(newsResult.value, priceHistory);
+        } else {
+            showError(newsResult.reason?.message || 'Failed to fetch news');
+        }
     } catch (err) {
         showError(err.message);
     } finally {
@@ -303,7 +339,7 @@ async function fetchCompanyOverview(ticker) {
     }
 }
 
-function displayAnalystRatings(data) {
+function displayAnalystRatings(data, currentPrice) {
     if (!data || !data.AnalystRatingBuy) {
         analystSection.classList.add('hidden');
         return;
@@ -326,6 +362,14 @@ function displayAnalystRatings(data) {
     const total = totalBuy + totalHold + totalSell;
 
     document.getElementById('analyst-target-price').textContent = `Target: $${targetPrice}`;
+
+    // Update current price
+    const priceEl = document.getElementById('analyst-current-price');
+    if (currentPrice) {
+        priceEl.textContent = `Price: $${parseFloat(currentPrice).toFixed(2)}`;
+    } else {
+        priceEl.textContent = 'Price: --';
+    }
 
     // Update labels
     document.getElementById('val-buy').textContent = totalBuy;

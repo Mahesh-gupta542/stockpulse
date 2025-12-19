@@ -815,3 +815,15 @@ main {
     border-radius: 4px;
     font-size: 0.8rem;
 }
+
+.analyst-prices {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.analyst-current {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
