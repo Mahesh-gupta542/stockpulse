@@ -723,3 +723,95 @@ main {
     background: rgba(255, 50, 50, 0.1);
     color: #ff3232;
 }
+/* Analyst Ratings */
+.analyst-rating-section {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.analyst-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.analyst-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-main);
+}
+
+.analyst-target {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary-accent);
+}
+
+.rating-meter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.rating-bar-container {
+    display: flex;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.rating-bar {
+    height: 100%;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rating-bar.buy {
+    background: var(--success-color);
+    box-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+}
+
+.rating-bar.hold {
+    background: #ffd700; /* Gold */
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.rating-bar.sell {
+    background: #ff3232;
+    box-shadow: 0 0 10px rgba(255, 50, 50, 0.3);
+}
+
+.rating-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.rating-labels span {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.rating-labels .label-buy { color: var(--success-color); }
+.rating-labels .label-hold { color: #ffd700; }
+.rating-labels .label-sell { color: #ff3232; }
+
+.rating-labels .label-buy span,
+.rating-labels .label-hold span,
+.rating-labels .label-sell span {
+    font-weight: 700;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}

@@ -44,6 +44,27 @@
                     <button id="search-btn">Find News</button>
                 </div>
 
+                <div id="analyst-rating-section" class="analyst-rating-section hidden">
+                    <div class="analyst-content">
+                        <div class="analyst-header">
+                            <h3>Analyst Ratings</h3>
+                            <span class="analyst-target" id="analyst-target-price">Target: --</span>
+                        </div>
+                        <div class="rating-meter">
+                            <div class="rating-bar-container">
+                                <div class="rating-bar buy" style="width: 0%" id="bar-buy" title="Buy"></div>
+                                <div class="rating-bar hold" style="width: 0%" id="bar-hold" title="Hold"></div>
+                                <div class="rating-bar sell" style="width: 0%" id="bar-sell" title="Sell"></div>
+                            </div>
+                            <div class="rating-labels">
+                                <span class="label-buy">Buy <span id="val-buy">0</span></span>
+                                <span class="label-hold">Hold <span id="val-hold">0</span></span>
+                                <span class="label-sell">Sell <span id="val-sell">0</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Results Section -->
                 <div class="results-header hidden" id="results-header">
                     <h2>Latest Market Moving News</h2>

@@ -4,6 +4,7 @@ const API_BASE_URL = 'https://www.alphavantage.co/query';
 const searchBtn = document.getElementById('search-btn');
 const tickerInput = document.getElementById('ticker-input');
 const resultsSection = document.getElementById('results-header');
+const analystSection = document.getElementById('analyst-rating-section');
 const newsGrid = document.getElementById('news-grid');
 const loading = document.getElementById('loading');
 const errorMsg = document.getElementById('error-msg');
@@ -223,18 +224,21 @@ async function handleSearch() {
 
     // Reset UI
     resultsSection.classList.remove('hidden');
+    analystSection.classList.add('hidden'); // Hide until loaded
     newsGrid.innerHTML = '';
     loading.classList.remove('hidden');
     errorMsg.classList.add('hidden');
 
     try {
-        // Fetch News and Price History in parallel
-        const [newsFeed, priceHistory] = await Promise.all([
+        // Fetch News, Price History, and Analyst Ratings in parallel
+        const [newsFeed, priceHistory, overview] = await Promise.all([
             fetchStockNews(ticker),
-            fetchStockHistory(ticker)
+            fetchStockHistory(ticker),
+            fetchCompanyOverview(ticker)
         ]);
 
         displayNews(newsFeed, priceHistory);
+        displayAnalystRatings(overview);
     } catch (err) {
         showError(err.message);
     } finally {
@@ -284,6 +288,63 @@ async function fetchStockHistory(ticker) {
     } catch (error) {
         console.warn('History fetch error:', error);
         return null;
+    }
+}
+
+async function fetchCompanyOverview(ticker) {
+    const url = `${API_BASE_URL}?function=OVERVIEW&symbol=${ticker}&apikey=${apiKey}`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        return data; // Returns object with AnalystRating fields
+    } catch (error) {
+        console.warn('Overview fetch error:', error);
+        return null;
+    }
+}
+
+function displayAnalystRatings(data) {
+    if (!data || !data.AnalystRatingBuy) {
+        analystSection.classList.add('hidden');
+        return;
+    }
+
+    analystSection.classList.remove('hidden');
+
+    // Extract values (default to 0 if missing)
+    const strongBuy = parseInt(data.AnalystRatingStrongBuy) || 0;
+    const buy = parseInt(data.AnalystRatingBuy) || 0;
+    const hold = parseInt(data.AnalystRatingHold) || 0;
+    const sell = parseInt(data.AnalystRatingSell) || 0;
+    const strongSell = parseInt(data.AnalystRatingStrongSell) || 0;
+    const targetPrice = data.AnalystTargetPrice || '--';
+
+    // Aggregate for simplified "Buy/Hold/Sell" view
+    const totalBuy = strongBuy + buy;
+    const totalHold = hold;
+    const totalSell = sell + strongSell;
+    const total = totalBuy + totalHold + totalSell;
+
+    document.getElementById('analyst-target-price').textContent = `Target: $${targetPrice}`;
+
+    // Update labels
+    document.getElementById('val-buy').textContent = totalBuy;
+    document.getElementById('val-hold').textContent = totalHold;
+    document.getElementById('val-sell').textContent = totalSell;
+
+    // Calculate percentages for bar widths
+    if (total > 0) {
+        const buyPct = (totalBuy / total) * 100;
+        const holdPct = (totalHold / total) * 100;
+        const sellPct = (totalSell / total) * 100;
+
+        document.getElementById('bar-buy').style.width = `${buyPct}%`;
+        document.getElementById('bar-hold').style.width = `${holdPct}%`;
+        document.getElementById('bar-sell').style.width = `${sellPct}%`;
+    } else {
+        document.getElementById('bar-buy').style.width = '0%';
+        document.getElementById('bar-hold').style.width = '0%';
+        document.getElementById('bar-sell').style.width = '0%';
     }
 }
 
