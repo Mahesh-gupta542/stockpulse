@@ -162,7 +162,7 @@ function stopPolling() {
 
 async function checkWatchlistNews() {
     if (watchlist.length === 0 || !apiKey) return;
-
+    console.log('Polling for watchlist news...');
     // Alpha Vantage allows comma separated tickers
     const tickers = watchlist.join(',');
     const url = `${API_BASE_URL}?function=NEWS_SENTIMENT&tickers=${tickers}&apikey=${apiKey}`;
@@ -203,11 +203,6 @@ function processNewsForNotifications(feed) {
 }
 
 function sendNotification(item) {
-    if (Notification.permission !== 'granted') {
-        alert('Notification permission not granted. Cannot send notification');
-        return;
-    }
-
     try {
         const notif = new Notification(`Bullish News: ${item.title}`, {
             body: item.summary,
@@ -218,7 +213,6 @@ function sendNotification(item) {
         notif.onclick = () => {
             window.open(item.url, '_blank');
         };
-        console.log('Notification sent for:', item.title);
     } catch (e) {
         console.error('Error sending notification:', e);
     }
