@@ -827,3 +827,14 @@ main {
     font-weight: 600;
     color: var(--text-main);
 }
+/* PR Newswire Branding */
+.provider-credit {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+#pr-newswire-section .news-card {
+    border-left: 3px solid #ff3232;
+    /* Signature Red */
+}

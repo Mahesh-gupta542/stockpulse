@@ -203,14 +203,25 @@ function processNewsForNotifications(feed) {
 }
 
 function sendNotification(item) {
-    const notif = new Notification(`Bullish News: ${item.title}`, {
-        body: item.summary,
-        icon: '/favicon.ico' // Placeholder
-    });
+    if (Notification.permission !== 'granted') {
+        alert('Notification permission not granted. Cannot send notification');
+        return;
+    }
 
-    notif.onclick = () => {
-        window.open(item.url, '_blank');
-    };
+    try {
+        const notif = new Notification(`Bullish News: ${item.title}`, {
+            body: item.summary,
+            icon: 'icon.png', // Use existing icon file
+            tag: item.url // Use URL as tag to prevent duplicates (browser handled)
+        });
+
+        notif.onclick = () => {
+            window.open(item.url, '_blank');
+        };
+        console.log('Notification sent for:', item.title);
+    } catch (e) {
+        console.error('Error sending notification:', e);
+    }
 }
 
 // Main Search Logic (Existing)
@@ -483,7 +494,10 @@ const tabs = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 const activeTickersList = document.getElementById('active-tickers-list');
 const refreshTickersBtn = document.getElementById('refresh-tickers-btn');
+const prNewsGrid = document.getElementById('pr-news-grid');
+const refreshPrBtn = document.getElementById('refresh-pr-btn');
 let topTickersLoaded = false;
+let prNewsLoaded = false;
 
 tabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -503,8 +517,81 @@ tabs.forEach(tab => {
         if (targetId === 'active-tickers-section' && !topTickersLoaded) {
             fetchTopActiveTickers();
         }
+
+        // Load PR News if switching to that tab
+        if (targetId === 'pr-newswire-section' && !prNewsLoaded) {
+            fetchPRNews();
+        }
     });
 });
+
+if (refreshPrBtn) {
+    refreshPrBtn.addEventListener('click', () => {
+        refreshPrBtn.classList.add('spinning');
+        fetchPRNews(true).finally(() => {
+            refreshPrBtn.classList.remove('spinning');
+        });
+    });
+}
+
+async function fetchPRNews(isRefresh = false) {
+    if (!isRefresh) {
+        prNewsGrid.innerHTML = '<div class="loading-placeholder">Loading latest press releases...</div>';
+    }
+
+    // Using rss2json as a CORS proxy for the demo
+    const RSS_URL = 'https://www.prnewswire.com/rss/news/all-news-8482.rss';
+    const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}`;
+
+    try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+
+        if (data.status !== 'ok') {
+            throw new Error('Failed to fetch RSS feed');
+        }
+
+        renderPRNews(data.items);
+        prNewsLoaded = true;
+
+    } catch (error) {
+        console.error('PR News Fetch Error:', error);
+        prNewsGrid.innerHTML = `<div class="error-msg">Failed to load press releases. <br> ${error.message}</div>`;
+    }
+}
+
+function renderPRNews(items) {
+    prNewsGrid.innerHTML = '';
+
+    items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'news-card';
+
+        // Date formatting
+        const dateObj = new Date(item.pubDate);
+        const formattedDate = dateObj.toLocaleDateString(undefined, {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+
+        div.innerHTML = `
+            <div>
+                <div class="card-header">
+                    <span class="source">PR Newswire</span>
+                    <span class="sentiment-badge" style="background: rgba(255,255,255,0.1);">Press Release</span>
+                </div>
+                <h3>${item.title}</h3>
+                <p>${item.description ? item.description.replace(/<[^>]*>?/gm, '').slice(0, 150) + '...' : 'No description available.'}</p>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
+                <span style="font-size: 0.8rem; color: #666;">${formattedDate}</span>
+                <a href="${item.link}" target="_blank" class="read-more">
+                    Read Release <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+                </a>
+            </div>
+        `;
+        prNewsGrid.appendChild(div);
+    });
+}
 
 if (refreshTickersBtn) {
     refreshTickersBtn.addEventListener('click', () => {
