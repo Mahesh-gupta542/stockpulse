@@ -534,7 +534,7 @@ async function fetchPRNews(isRefresh = false) {
     }
 
     // Using rss2json as a CORS proxy for the demo
-    const RSS_URL = 'https://www.prnewswire.com/rss/news/all-news-8482.rss';
+    const RSS_URL = 'https://www.prnewswire.com/rss/news-releases-list.rss';
     const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}`;
 
     try {
